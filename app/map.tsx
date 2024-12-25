@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react"
-import { StyleSheet, View, Image } from "react-native"
+import { StyleSheet, View, Image, Pressable } from "react-native"
 import { ThemedView } from "@/components/ThemedView"
 import { ThemedText } from "@/components/ThemedText"
 import MapView, { Marker, AnimatedRegion } from "react-native-maps"
 import * as SecureStore from "expo-secure-store"
 import { router } from "expo-router"
+import { MaterialIcons } from "@expo/vector-icons"
 
 type BusLocation = {
   vehicleNumber: string
@@ -90,7 +91,14 @@ export default function MapScreen() {
         }
       )
 
-      if (!response.ok) throw new Error("Failed to fetch bus location")
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.log(errorData)
+        await SecureStore.deleteItemAsync("access_token")
+        await SecureStore.deleteItemAsync("user_data")
+        router.replace("/auth/login")
+        return
+      }
 
       const data: BusLocation = await response.json()
       setBusLocation(data)
@@ -229,5 +237,26 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     transform: [{ rotate: "90deg" }],
+  },
+  navButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "#007AFF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
 })
