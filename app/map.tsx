@@ -1,5 +1,11 @@
-import { useEffect, useState, useCallback } from "react"
-import { StyleSheet, View, Image, Pressable } from "react-native"
+import { useEffect, useState, useCallback, useRef } from "react"
+import {
+  StyleSheet,
+  View,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native"
 import { ThemedView } from "@/components/ThemedView"
 import { ThemedText } from "@/components/ThemedText"
 import MapView, { Marker, AnimatedRegion } from "react-native-maps"
@@ -29,18 +35,8 @@ export default function MapScreen() {
       longitudeDelta: 0.005,
     })
   )
-
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
-    const token = await SecureStore.getItemAsync("access_token")
-    if (!token) {
-      router.replace("/auth/login")
-      return
-    }
-  }
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const mapRef = useRef<any>(null)
 
   const animateMarker = useCallback(
     (newLocation: BusLocation) => {
@@ -80,7 +76,7 @@ export default function MapScreen() {
       const token = await SecureStore.getItemAsync("access_token")
 
       const students = JSON.parse(userData)
-      const busId = students[0]?.bus_id // Assuming we're tracking the first student's bus
+      const busId = students[0]?.bus_id
 
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/location/${busId}`,
@@ -93,7 +89,7 @@ export default function MapScreen() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.log(errorData)
+        console.log("API Error:", errorData)
         await SecureStore.deleteItemAsync("access_token")
         await SecureStore.deleteItemAsync("user_data")
         router.replace("/auth/login")
@@ -104,12 +100,41 @@ export default function MapScreen() {
       setBusLocation(data)
       animateMarker(data)
     } catch (err) {
+      console.error("Error fetching location:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch location")
     }
   }, [animateMarker])
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    await fetchBusLocation()
+    setIsRefreshing(false)
+
+    if (busLocation && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: busLocation.latitude,
+          longitude: busLocation.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+        1000
+      )
+    }
+  }, [fetchBusLocation, busLocation])
+
   useEffect(() => {
-    fetchBusLocation()
+    const initialize = async () => {
+      const token = await SecureStore.getItemAsync("access_token")
+      if (!token) {
+        router.replace("/auth/login")
+        return
+      }
+      // Call fetchBusLocation only after auth check succeeds
+      fetchBusLocation()
+    }
+
+    initialize()
   }, [])
 
   useEffect(() => {
@@ -120,7 +145,25 @@ export default function MapScreen() {
     )
 
     return () => clearInterval(interval)
-  }, [fetchBusLocation, busLocation?.ignition])
+  }, [busLocation?.ignition])
+
+  useEffect(() => {
+    if (busLocation && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: busLocation.latitude,
+          longitude: busLocation.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+        1000
+      )
+    }
+  }, [busLocation])
+
+  useEffect(() => {
+    console.log("Bus Location Updated:", busLocation)
+  }, [busLocation])
 
   if (!busLocation) {
     return (
@@ -131,18 +174,19 @@ export default function MapScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: busLocation?.latitude || 0,
-          longitude: busLocation?.longitude || 0,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        }}
-      >
-        {busLocation &&
-          (busLocation.ignition ? (
+    busLocation && (
+      <View style={styles.container}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={{
+            latitude: busLocation?.latitude || 0,
+            longitude: busLocation?.longitude || 0,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          }}
+        >
+          {busLocation.ignition ? (
             <Marker.Animated
               coordinate={{
                 latitude: markerCoordinate.latitude,
@@ -171,27 +215,47 @@ export default function MapScreen() {
               description={`Speed: ${busLocation.speed} km/h | Engine OFF`}
               pinColor="red"
             />
-          ))}
-      </MapView>
+          )}
+        </MapView>
 
-      <ThemedView style={styles.infoCard}>
-        <ThemedText type="subtitle">Bus Details</ThemedText>
-        <ThemedText>Vehicle: {busLocation.vehicleNumber}</ThemedText>
-        <ThemedText>Location: {busLocation.location}</ThemedText>
-        {busLocation.ignition && (
-          <ThemedText>Speed: {busLocation.speed} km/h</ThemedText>
-        )}
-        <ThemedText>
-          Status: {busLocation.ignition ? "Running" : "Stationary"}
-        </ThemedText>
-      </ThemedView>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => router.push("/dashboard")}
+        >
+          <MaterialIcons name="dashboard" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
 
-      {error && (
-        <ThemedView style={styles.errorCard}>
-          <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <MaterialIcons name="my-location" size={24} color="#FFFFFF" />
+          )}
+        </TouchableOpacity>
+
+        <ThemedView style={styles.infoCard}>
+          <ThemedText type="subtitle">Bus Details</ThemedText>
+          <ThemedText>Vehicle: {busLocation.vehicleNumber}</ThemedText>
+          <ThemedText>Location: {busLocation.location}</ThemedText>
+          {busLocation.ignition && (
+            <ThemedText>Speed: {busLocation.speed} km/h</ThemedText>
+          )}
+          <ThemedText>
+            Status: {busLocation.ignition ? "Running" : "Stationary"}
+          </ThemedText>
         </ThemedView>
-      )}
-    </View>
+
+        {error && (
+          <ThemedView style={styles.errorCard}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+          </ThemedView>
+        )}
+      </View>
+    )
   )
 }
 
@@ -258,5 +322,25 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFFFFF",
     fontWeight: "bold",
+  },
+  refreshButton: {
+    position: "absolute",
+    zIndex: 1000,
+    bottom: 20,
+    right: 20,
+    backgroundColor: "#007AFF",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 })
