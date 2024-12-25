@@ -167,8 +167,11 @@ export default function MapScreen() {
 
   if (!busLocation) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
+      <ThemedView style={styles.loadingContainer}>
+        <ThemedText>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </ThemedText>
+        <ThemedText>Locating your child's bus...</ThemedText>
       </ThemedView>
     )
   }
@@ -262,6 +265,11 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   map: {
     flex: 1,

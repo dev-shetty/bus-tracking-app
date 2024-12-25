@@ -89,6 +89,7 @@ export default function VerifyScreen() {
             maxLength={1}
             keyboardType="number-pad"
             value={digit}
+            autoComplete="off"
             onChangeText={(value) => handleOtpChange(value, index)}
             onKeyPress={({ nativeEvent }) => {
               if (nativeEvent.key === "Backspace" && !digit && index > 0) {
