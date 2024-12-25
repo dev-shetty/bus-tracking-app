@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { StyleSheet, TextInput, TouchableOpacity } from "react-native"
+import React, { useState, useEffect } from "react"
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native"
 import { router, useLocalSearchParams } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 import { ThemedText } from "@/components/ThemedText"
@@ -10,6 +10,10 @@ export default function VerifyScreen() {
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [otpArray, setOtpArray] = useState(["", "", "", "", "", ""])
+  const inputRefs = Array(6)
+    .fill(0)
+    .map(() => React.createRef<TextInput>())
 
   useEffect(() => {
     if (!mobileNumber) {
@@ -47,11 +51,22 @@ export default function VerifyScreen() {
       await SecureStore.setItemAsync("access_token", data.access_token)
       await SecureStore.setItemAsync("user_data", JSON.stringify(data.students))
 
-      router.replace("/dashboard")
+      router.replace("/map")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOtpChange = (value: string, index: number) => {
+    const newOtpArray = [...otpArray]
+    newOtpArray[index] = value
+    setOtpArray(newOtpArray)
+    setOtp(newOtpArray.join(""))
+
+    if (value && index < 5) {
+      inputRefs[index + 1].current?.focus()
     }
   }
 
@@ -65,14 +80,24 @@ export default function VerifyScreen() {
         Enter the OTP sent to {mobileNumber}
       </ThemedText>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Enter OTP"
-        keyboardType="number-pad"
-        maxLength={6}
-        value={otp}
-        onChangeText={setOtp}
-      />
+      <View style={styles.otpContainer}>
+        {otpArray.map((digit, index) => (
+          <TextInput
+            key={index}
+            ref={inputRefs[index]}
+            style={styles.otpInput}
+            maxLength={1}
+            keyboardType="number-pad"
+            value={digit}
+            onChangeText={(value) => handleOtpChange(value, index)}
+            onKeyPress={({ nativeEvent }) => {
+              if (nativeEvent.key === "Backspace" && !digit && index > 0) {
+                inputRefs[index - 1].current?.focus()
+              }
+            }}
+          />
+        ))}
+      </View>
 
       {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
@@ -125,5 +150,19 @@ const styles = StyleSheet.create({
   error: {
     color: "red",
     marginBottom: 15,
+  },
+  otpContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  otpInput: {
+    width: 45,
+    height: 45,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    textAlign: "center",
+    fontSize: 20,
   },
 })

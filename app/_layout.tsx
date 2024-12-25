@@ -23,6 +23,7 @@ export default function RootLayout() {
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/verify" />
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="map" />
     </Stack>
   )
 }

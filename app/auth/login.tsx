@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const checkAuth = async () => {
     const token = await SecureStore.getItemAsync("access_token")
     if (token) {
-      router.replace("/dashboard")
+      router.replace("/map")
     }
   }
 
@@ -46,9 +46,6 @@ export default function LoginScreen() {
           body: JSON.stringify({ mobileNumber }),
         }
       )
-
-      console.log(response)
-      console.log({ mobileNumber })
 
       const data = await response.json()
 

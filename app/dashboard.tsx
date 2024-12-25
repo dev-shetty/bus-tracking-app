@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { StyleSheet, ScrollView } from "react-native"
+import { StyleSheet, ScrollView, TouchableOpacity } from "react-native"
 import { router } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 import { ThemedText } from "@/components/ThemedText"
@@ -34,11 +34,22 @@ export default function DashboardScreen() {
     }
   }
 
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("access_token")
+    await SecureStore.deleteItemAsync("user_data")
+    router.replace("/auth/login")
+  }
+
   return (
     <ScrollView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        Dashboard
-      </ThemedText>
+      <ThemedView style={styles.header}>
+        <ThemedText type="title" style={styles.title}>
+          Dashboard
+        </ThemedText>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <ThemedText style={styles.logoutText}>Logout</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
 
       {students.map((student, index) => (
         <ThemedView key={student.usn} style={styles.card}>
@@ -57,10 +68,27 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
     padding: 20,
   },
-  title: {
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
+  },
+  title: {
+    flex: 1,
+  },
+  logoutButton: {
+    backgroundColor: "#dc3545",
+    padding: 8,
+    borderRadius: 6,
+  },
+  logoutText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   card: {
     padding: 15,

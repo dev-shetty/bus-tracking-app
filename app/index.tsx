@@ -12,7 +12,7 @@ export default function Index() {
 
   const checkAuth = async () => {
     const token = await SecureStore.getItemAsync("access_token")
-    setInitialRoute(token ? "dashboard" : "auth/login")
+    setInitialRoute(token ? "/map" : "auth/login")
   }
 
   if (!initialRoute) {
